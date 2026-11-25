@@ -34,8 +34,11 @@ if missing:
 # =========================
 # Vehicle Manager
 # =========================
+# Regions: 1=Europe, 2=Canada, 3=USA, 4=China, 5=Australia, 6=India, 7=New Zealand
+REGION = int((os.environ.get("KIA_REGION") or "5").strip())
+
 vehicle_manager = VehicleManager(
-    region=3,  # North America
+    region=REGION,
     brand=1,   # KIA
     username=USERNAME,
     password=PASSWORD,
