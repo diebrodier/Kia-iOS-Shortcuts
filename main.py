@@ -12,11 +12,11 @@ app = Flask(__name__)
 # =========================
 # Environment Variables
 # =========================
-USERNAME = os.environ.get("KIA_USERNAME")
-PASSWORD = os.environ.get("KIA_PASSWORD")
-PIN = os.environ.get("KIA_PIN")
-SECRET_KEY = os.environ.get("SECRET_KEY")
-VEHICLE_ID = os.environ.get("VEHICLE_ID")  # Optional
+USERNAME = (os.environ.get("KIA_USERNAME") or "").strip() or None
+PASSWORD = (os.environ.get("KIA_PASSWORD") or "").strip() or None
+PIN = (os.environ.get("KIA_PIN") or "").strip() or None
+SECRET_KEY = (os.environ.get("SECRET_KEY") or "").strip() or None
+VEHICLE_ID = (os.environ.get("VEHICLE_ID") or "").strip() or None  # Optional
 
 missing = []
 if not USERNAME:
@@ -173,7 +173,7 @@ def list_vehicles():
         return jsonify({
             "error": "Authentication failed",
             "details": str(e),
-            "action": "Open Kia app and complete 2FA"
+            "action": "Check KIA_USERNAME/KIA_PASSWORD in Vercel env vars, or open the Kia app to complete any verification"
         }), 401
 
     except Exception as e:
@@ -205,7 +205,7 @@ def start_climate():
         return jsonify({
             "error": "Authentication failed",
             "details": str(e),
-            "action": "Open Kia app and complete 2FA"
+            "action": "Check KIA_USERNAME/KIA_PASSWORD in Vercel env vars, or open the Kia app to complete any verification"
         }), 401
 
     except Exception as e:
@@ -232,7 +232,7 @@ def stop_climate():
         return jsonify({
             "error": "Authentication failed",
             "details": str(e),
-            "action": "Open Kia app and complete 2FA"
+            "action": "Check KIA_USERNAME/KIA_PASSWORD in Vercel env vars, or open the Kia app to complete any verification"
         }), 401
 
     except Exception as e:
@@ -259,7 +259,7 @@ def unlock_car():
         return jsonify({
             "error": "Authentication failed",
             "details": str(e),
-            "action": "Open Kia app and complete 2FA"
+            "action": "Check KIA_USERNAME/KIA_PASSWORD in Vercel env vars, or open the Kia app to complete any verification"
         }), 401
 
     except Exception as e:
@@ -286,7 +286,7 @@ def lock_car():
         return jsonify({
             "error": "Authentication failed",
             "details": str(e),
-            "action": "Open Kia app and complete 2FA"
+            "action": "Check KIA_USERNAME/KIA_PASSWORD in Vercel env vars, or open the Kia app to complete any verification"
         }), 401
 
     except Exception as e:
