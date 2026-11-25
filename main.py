@@ -80,10 +80,8 @@ def ensure_authenticated():
             "This API cannot complete OTP yet."
         ) from e
     except AuthenticationError as e:
-        raise AuthenticationError(
-            "Kia authentication failed. "
-            "Open the Kia app and complete 2FA, then retry."
-        ) from e
+        print(f"Kia authentication failed: {e!r}")
+        raise AuthenticationError(f"Kia authentication failed: {e}") from e
 
 
 def refresh_and_sync():
