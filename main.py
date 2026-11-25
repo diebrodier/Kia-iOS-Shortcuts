@@ -138,8 +138,21 @@ def auth_status():
     except AuthenticationError as e:
         return jsonify({
             "status": "authentication_failed",
-            "message": str(e)
+            "message": str(e),
+            "credentials_received": {
+                "username": _mask_email(USERNAME),
+                "username_is_email": "@" in (USERNAME or ""),
+                "password_length": len(PASSWORD or ""),
+            }
         }), 401
+
+
+def _mask_email(value):
+    value = value or ""
+    if "@" not in value:
+        return (value[:1] + "***") if value else ""
+    local, domain = value.split("@", 1)
+    return f"{local[:1]}***@{domain}"
 
 
 @app.route("/list_vehicles", methods=["GET"])
