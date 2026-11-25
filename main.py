@@ -2,7 +2,10 @@ import hmac
 import os
 from flask import Flask, request, jsonify
 from hyundai_kia_connect_api import VehicleManager, ClimateRequestOptions
-from hyundai_kia_connect_api.exceptions import AuthenticationError
+from hyundai_kia_connect_api.exceptions import (
+    AuthenticationError,
+    AuthenticationOTPRequired,
+)
 
 app = Flask(__name__)
 
@@ -71,6 +74,11 @@ def ensure_authenticated():
     """
     try:
         vehicle_manager.check_and_refresh_token()
+    except AuthenticationOTPRequired as e:
+        raise AuthenticationError(
+            "Kia requires a one-time verification code (OTP) for this login. "
+            "This API cannot complete OTP yet."
+        ) from e
     except AuthenticationError as e:
         raise AuthenticationError(
             "Kia authentication failed. "
