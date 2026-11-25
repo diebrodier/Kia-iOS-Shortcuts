@@ -1,3 +1,4 @@
+import hmac
 import os
 from flask import Flask, request, jsonify
 from hyundai_kia_connect_api import VehicleManager, ClimateRequestOptions
@@ -41,8 +42,26 @@ vehicle_manager = VehicleManager(
 # =========================
 # Helper Functions
 # =========================
+def _normalize_key(value):
+    value = (value or "").strip()
+    if value.lower().startswith("bearer "):
+        value = value[7:].strip()
+    return value
+
+
+EXPECTED_KEY = _normalize_key(SECRET_KEY)
+
+
 def authorize_request():
-    return request.headers.get("Authorization") == SECRET_KEY
+    raw = request.headers.get("Authorization") or request.headers.get("X-API-Key")
+    provided = _normalize_key(raw)
+    ok = bool(provided) and hmac.compare_digest(provided, EXPECTED_KEY)
+    if not ok:
+        print(
+            f"Auth failed on {request.path}: header_present={raw is not None}, "
+            f"provided_len={len(provided)}, expected_len={len(EXPECTED_KEY)}"
+        )
+    return ok
 
 
 def ensure_authenticated():
