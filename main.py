@@ -1,18 +1,22 @@
+import hmac
 import os
 from flask import Flask, request, jsonify
 from hyundai_kia_connect_api import VehicleManager, ClimateRequestOptions
-from hyundai_kia_connect_api.exceptions import AuthenticationError
+from hyundai_kia_connect_api.exceptions import (
+    AuthenticationError,
+    AuthenticationOTPRequired,
+)
 
 app = Flask(__name__)
 
 # =========================
 # Environment Variables
 # =========================
-USERNAME = os.environ.get("KIA_USERNAME")
-PASSWORD = os.environ.get("KIA_PASSWORD")
-PIN = os.environ.get("KIA_PIN")
-SECRET_KEY = os.environ.get("SECRET_KEY")
-VEHICLE_ID = os.environ.get("VEHICLE_ID")  # Optional
+USERNAME = (os.environ.get("KIA_USERNAME") or "").strip() or None
+PASSWORD = (os.environ.get("KIA_PASSWORD") or "").strip() or None
+PIN = (os.environ.get("KIA_PIN") or "").strip() or None
+SECRET_KEY = (os.environ.get("SECRET_KEY") or "").strip() or None
+VEHICLE_ID = (os.environ.get("VEHICLE_ID") or "").strip() or None  # Optional
 
 missing = []
 if not USERNAME:
@@ -30,8 +34,11 @@ if missing:
 # =========================
 # Vehicle Manager
 # =========================
+# Regions: 1=Europe, 2=Canada, 3=USA, 4=China, 5=Australia, 6=India, 7=New Zealand
+REGION = int((os.environ.get("KIA_REGION") or "5").strip())
+
 vehicle_manager = VehicleManager(
-    region=3,  # North America
+    region=REGION,
     brand=1,   # KIA
     username=USERNAME,
     password=PASSWORD,
@@ -41,8 +48,26 @@ vehicle_manager = VehicleManager(
 # =========================
 # Helper Functions
 # =========================
+def _normalize_key(value):
+    value = (value or "").strip()
+    if value.lower().startswith("bearer "):
+        value = value[7:].strip()
+    return value
+
+
+EXPECTED_KEY = _normalize_key(SECRET_KEY)
+
+
 def authorize_request():
-    return request.headers.get("Authorization") == SECRET_KEY
+    raw = request.headers.get("Authorization") or request.headers.get("X-API-Key")
+    provided = _normalize_key(raw)
+    ok = bool(provided) and hmac.compare_digest(provided, EXPECTED_KEY)
+    if not ok:
+        print(
+            f"Auth failed on {request.path}: header_present={raw is not None}, "
+            f"provided_len={len(provided)}, expected_len={len(EXPECTED_KEY)}"
+        )
+    return ok
 
 
 def ensure_authenticated():
@@ -52,11 +77,14 @@ def ensure_authenticated():
     """
     try:
         vehicle_manager.check_and_refresh_token()
-    except AuthenticationError as e:
+    except AuthenticationOTPRequired as e:
         raise AuthenticationError(
-            "Kia authentication failed. "
-            "Open the Kia app and complete 2FA, then retry."
+            "Kia requires a one-time verification code (OTP) for this login. "
+            "This API cannot complete OTP yet."
         ) from e
+    except AuthenticationError as e:
+        print(f"Kia authentication failed: {e!r}")
+        raise AuthenticationError(f"Kia authentication failed: {e}") from e
 
 
 def refresh_and_sync():
@@ -113,8 +141,21 @@ def auth_status():
     except AuthenticationError as e:
         return jsonify({
             "status": "authentication_failed",
-            "message": str(e)
+            "message": str(e),
+            "credentials_received": {
+                "username": _mask_email(USERNAME),
+                "username_is_email": "@" in (USERNAME or ""),
+                "password_length": len(PASSWORD or ""),
+            }
         }), 401
+
+
+def _mask_email(value):
+    value = value or ""
+    if "@" not in value:
+        return (value[:1] + "***") if value else ""
+    local, domain = value.split("@", 1)
+    return f"{local[:1]}***@{domain}"
 
 
 @app.route("/list_vehicles", methods=["GET"])
@@ -148,7 +189,7 @@ def list_vehicles():
         return jsonify({
             "error": "Authentication failed",
             "details": str(e),
-            "action": "Open Kia app and complete 2FA"
+            "action": "Check KIA_USERNAME/KIA_PASSWORD in Vercel env vars, or open the Kia app to complete any verification"
         }), 401
 
     except Exception as e:
@@ -180,7 +221,7 @@ def start_climate():
         return jsonify({
             "error": "Authentication failed",
             "details": str(e),
-            "action": "Open Kia app and complete 2FA"
+            "action": "Check KIA_USERNAME/KIA_PASSWORD in Vercel env vars, or open the Kia app to complete any verification"
         }), 401
 
     except Exception as e:
@@ -207,7 +248,7 @@ def stop_climate():
         return jsonify({
             "error": "Authentication failed",
             "details": str(e),
-            "action": "Open Kia app and complete 2FA"
+            "action": "Check KIA_USERNAME/KIA_PASSWORD in Vercel env vars, or open the Kia app to complete any verification"
         }), 401
 
     except Exception as e:
@@ -234,7 +275,7 @@ def unlock_car():
         return jsonify({
             "error": "Authentication failed",
             "details": str(e),
-            "action": "Open Kia app and complete 2FA"
+            "action": "Check KIA_USERNAME/KIA_PASSWORD in Vercel env vars, or open the Kia app to complete any verification"
         }), 401
 
     except Exception as e:
@@ -261,7 +302,7 @@ def lock_car():
         return jsonify({
             "error": "Authentication failed",
             "details": str(e),
-            "action": "Open Kia app and complete 2FA"
+            "action": "Check KIA_USERNAME/KIA_PASSWORD in Vercel env vars, or open the Kia app to complete any verification"
         }), 401
 
     except Exception as e:
